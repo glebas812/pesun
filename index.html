@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>College Brawl — Идеальный баланс v3.0</title>
+    <title>College Brawl — ИСПРАВЛЕННАЯ ВЕРСИЯ</title>
     <style>
         * { user-select: none; box-sizing: border-box; }
         body {
@@ -47,7 +47,7 @@
     <div class="game-container">
         <canvas id="gameCanvas" width="1280" height="720"></canvas>
         <div class="info-panel">
-            <div class="status" id="gameStatus">🏫 COLLEGE BRAWL | ИДЕАЛЬНЫЙ БАЛАНС</div>
+            <div class="status" id="gameStatus">🏫 COLLEGE BRAWL | ИСПРАВЛЕНА</div>
             <div class="diff-indicator" id="diffIndicator">СРЕДНЯЯ</div>
             <button id="resetBtn">🔄 СБРОС</button>
             <button id="menuBtn">🎮 МЕНЮ</button>
@@ -58,20 +58,19 @@
 <script>
 (function(){
     // ==================== СОСТОЯНИЕ ====================
-    let gameState = "menu";  // menu, storytelling, gameplay, battle, cutscene, gameover, credits
+    let gameState = "menu";
     let currentLevel = 1;
     let cutsceneType = null;
     let cutsceneStep = 0;
     let storyStep = 0;
-    let escapeChoiceActive = false;
     
-    // ==================== КАРТЫ УРОВНЕЙ ====================
-    let currentMap = { width: 20, height: 15, tiles: [], healZones: [], enemies: [], doors: [] };
+    // ==================== КАРТЫ ====================
+    let currentMap = { width: 20, height: 15, tiles: [], healZones: [], enemies: [] };
     let player = { x: 10, y: 7 };
     
     function buildMapClass() {
         let w=20, h=15;
-        let tiles = Array(h).fill().map(function() { return Array(w).fill(0); });
+        let tiles = Array(h).fill().map(() => Array(w).fill(0));
         for(let i=0;i<h;i++) { tiles[i][0]=1; tiles[i][w-1]=1; }
         for(let j=0;j<w;j++) { tiles[0][j]=1; tiles[h-1][j]=1; }
         for(let k=3;k<8;k++) { tiles[5][k]=2; tiles[8][k]=2; }
@@ -86,19 +85,18 @@
                 {x:8,y:7, used:false},{x:10,y:5, used:false},{x:10,y:6, used:false}
             ],
             enemies: [
-                {x:11, y:12, type:"freshman", alive:true, name:"Двоечник"},
-                {x:14, y:6, type:"bully", alive:true, name:"Задира"},
-                {x:8, y:11, type:"freshman", alive:true, name:"Двоечник"},
-                {x:6, y:4, type:"freshman", alive:true, name:"Двоечник"},
-                {x:4, y:8, type:"bully", alive:true, name:"Задира"}
+                {x:11, y:12, type:"freshman", alive:true, name:"Двоечник", required:false},
+                {x:14, y:6, type:"bully", alive:true, name:"Задира", required:true},
+                {x:8, y:11, type:"freshman", alive:true, name:"Двоечник", required:false},
+                {x:4, y:8, type:"freshman", alive:true, name:"Двоечник", required:false}
             ],
-            doors: [{x:w-2, y:12, targetLevel:2}]
+            requiredToKill: 1  // нужно убить 1 врага для перехода
         };
     }
     
     function buildMapCorridor() {
         let w=25, h=18;
-        let tiles = Array(h).fill().map(function() { return Array(w).fill(0); });
+        let tiles = Array(h).fill().map(() => Array(w).fill(0));
         for(let i=0;i<h;i++) { tiles[i][0]=1; tiles[i][w-1]=1; }
         for(let j=0;j<w;j++) { tiles[0][j]=1; tiles[h-1][j]=1; }
         for(let k=4;k<8;k++) { tiles[k][10]=1; tiles[k][15]=1; }
@@ -109,19 +107,18 @@
             width:w, height:h, tiles: tiles,
             healZones: [{x:3,y:5, used:false}, {x:14,y:22, used:false}],
             enemies: [
-                {x:7, y:8, type:"teacher", alive:true, name:"Злой препод"},
-                {x:15, y:9, type:"starosta", alive:true, name:"Староста"},
-                {x:10, y:14, type:"teacher", alive:true, name:"Злой препод"},
-                {x:18, y:7, type:"starosta", alive:true, name:"Староста"},
-                {x:5, y:12, type:"teacher", alive:true, name:"Злой препод"}
+                {x:7, y:8, type:"teacher", alive:true, name:"Злой препод", required:true},
+                {x:15, y:9, type:"starosta", alive:true, name:"Староста", required:false},
+                {x:10, y:14, type:"teacher", alive:true, name:"Злой препод", required:false},
+                {x:18, y:7, type:"starosta", alive:true, name:"Староста", required:false}
             ],
-            doors: [{x:w-2, y:8, targetLevel:3}]
+            requiredToKill: 1
         };
     }
     
     function buildMapCanteen() {
         let w=22, h=16;
-        let tiles = Array(h).fill().map(function() { return Array(w).fill(0); });
+        let tiles = Array(h).fill().map(() => Array(w).fill(0));
         for(let i=0;i<h;i++) { tiles[i][0]=1; tiles[i][w-1]=1; }
         for(let j=0;j<w;j++) { tiles[0][j]=1; tiles[h-1][j]=1; }
         for(let k=4;k<10;k++) { tiles[6][k]=2; tiles[10][k]=2; }
@@ -132,35 +129,29 @@
             width:w, height:h, tiles: tiles,
             healZones: healZones,
             enemies: [
-                {x:15, y:8, type:"cook", alive:true, name:"Повариха"},
-                {x:18, y:5, type:"bully", alive:true, name:"Задира"},
-                {x:5, y:13, type:"freshman", alive:true, name:"Двоечник"},
-                {x:14, y:13, type:"teacher", alive:true, name:"Злой препод"},
-                {x:8, y:4, type:"cook", alive:true, name:"Повариха"},
-                {x:12, y:11, type:"starosta", alive:true, name:"Староста"}
+                {x:15, y:8, type:"cook", alive:true, name:"Повариха", required:true},
+                {x:18, y:5, type:"bully", alive:true, name:"Задира", required:false},
+                {x:5, y:13, type:"freshman", alive:true, name:"Двоечник", required:false},
+                {x:14, y:13, type:"teacher", alive:true, name:"Злой препод", required:false}
             ],
-            doors: [{x:w-2, y:7, targetLevel:4}]
+            requiredToKill: 1
         };
     }
     
     function buildMapOffice() {
-    let w=20, h=15;
-    let tiles = Array(h).fill().map(function() { return Array(w).fill(0); });
-    for(let i=0;i<h;i++) { tiles[i][0]=1; tiles[i][w-1]=1; }
-    for(let j=0;j<w;j++) { tiles[0][j]=1; tiles[h-1][j]=1; }
-    for(let k=8;k<12;k++) tiles[7][k]=2;
-    tiles[5][10]=2; tiles[5][11]=2;
-    
-    // ========== ДОБАВЛЯЕМ ДВЕРЬ В ПРАВОМ НИЖНЕМ УГЛУ ==========
-    tiles[13][w-2] = 3;   // Дверь на клетке (18, 13)
-    
-    return {
-        width:w, height:h, tiles: tiles,
-        healZones: [{x:7,y:8, used:false},{x:7,y:9, used:false},{x:7,y:10, used:false},{x:7,y:11, used:false},{x:5,y:10, used:false},{x:5,y:11, used:false}],
-        enemies: [{x:10, y:7, type:"boss", alive:true, name:"ПРОРЕКТОР ТЕНЕЙ"}],
-        doors: [{x:w-2, y:13, targetLevel:5}]  // Добавляем дверь в массив дверей
-    };
-}
+        let w=20, h=15;
+        let tiles = Array(h).fill().map(() => Array(w).fill(0));
+        for(let i=0;i<h;i++) { tiles[i][0]=1; tiles[i][w-1]=1; }
+        for(let j=0;j<w;j++) { tiles[0][j]=1; tiles[h-1][j]=1; }
+        for(let k=8;k<12;k++) tiles[7][k]=2;
+        tiles[5][10]=2; tiles[5][11]=2;
+        return {
+            width:w, height:h, tiles: tiles,
+            healZones: [{x:7,y:8, used:false},{x:7,y:9, used:false},{x:7,y:10, used:false},{x:7,y:11, used:false},{x:5,y:10, used:false},{x:5,y:11, used:false}],
+            enemies: [{x:10, y:7, type:"boss", alive:true, name:"ПРОРЕКТОР ТЕНЕЙ", required:true}],
+            requiredToKill: 1
+        };
+    }
     
     function loadLevel(level) {
         if(level === 1) currentMap = buildMapClass();
@@ -171,94 +162,74 @@
         player.y = 5;
     }
     
-    function getAliveEnemiesCount() {
-        let cnt = 0;
-        for(let i=0; i<currentMap.enemies.length; i++) {
-            if(currentMap.enemies[i].alive) cnt++;
+    function getRequiredKillsCount() {
+        let killed = 0;
+        for(let e of currentMap.enemies) {
+            if(e.required && !e.alive) killed++;
         }
-        return cnt;
+        return killed;
     }
     
-    // ==================== ГЕРОИ (НОВЫЙ БАЛАНС + НАВЫКИ) ====================
+    function getTotalRequiredCount() {
+        let total = 0;
+        for(let e of currentMap.enemies) {
+            if(e.required) total++;
+        }
+        return total;
+    }
+    
+    function canGoToNextLevel() {
+        return getRequiredKillsCount() >= (currentMap.requiredToKill || 1);
+    }
+    
+    // ==================== ГЕРОИ (СИЛЬНЫЕ) ====================
     let heroes = [
-        { id:0, name:"Глеб", role:"Танк", hp:800, maxHp:800, mp:120, maxMp:120, atk:55, def:100, 
-          skills: [
-              { name:"Умный удар", dmg:80, mpCost:8, effect:"defense_down", desc:"80 урона + снижение защиты врага" },
-              { name:"Анализ слабости", mpCost:5, effect:"next_crit", desc:"Следующий удар критический" },
-              { name:"Тактическая защита", mpCost:6, effect:"self_def_up", desc:"Защита +50% на 3 хода" }
-          ], skillIndex:0, type:"dmg", exp:0, level:1,
-          phrases:{ start:"Вероятность победы высока. Действуем по плану.", victory:"Тактика принесла результат.",
-                    hit:"Просчёт... но не критично.", heal:"Благодарю.", death:"Ошибка в расчётах...", skill:"Сейчас всё просчитаю!" } },
-        { id:1, name:"Игнат", role:"Дамагер", hp:650, maxHp:650, mp:20, maxMp:20, atk:120, def:50, 
-          skills: [
-              { name:"Гантеля", dmg:180, hpCost:10, desc:"180 урона, тратит 10 HP" },
-              { name:"Штанга", dmg:120, hpCost:15, aoe:true, desc:"120 урона по всем врагам, тратит 15 HP" },
-              { name:"Ярость", hpCost:8, effect:"self_atk_up", desc:"Атака +30% на 3 хода" }
-          ], skillIndex:0, type:"dmg", exp:0, level:1,
-          phrases:{ start:"ГА! ШТАНГУ ПОДНЯЛ! СЕЙЧАС РАЗНЕСУ!", victory:"ГА! ПОБЕДА! ИДУ КАЧАТЬСЯ!",
-                    hit:"ФУХ! БЕЛОК ПОМОЖЕТ!", heal:"ФУХ... ТЕПЕРЬ ПОШЛО!", death:"ГАНТЕЛЯ... ВЫПАЛА...", skill:"ПОЛУЧАЙ!" } },
-        { id:2, name:"Одирлбекк", role:"Стекло-пушка", hp:450, maxHp:450, mp:40, maxMp:40, atk:140, def:35, 
-          skills: [
-              { name:"Теневой удар", dmg:200, hpCost:12, desc:"200 урона, тратит 12 HP" },
-              { name:"Смертельный клинок", dmg:150, hpCost:15, instakill:0.15, desc:"150 урона + 15% шанс убить" },
-              { name:"Теневая стена", hpCost:10, effect:"dodge_next", desc:"Уклонение от следующей атаки" }
-          ], skillIndex:0, type:"dmg", exp:0, level:1,
-          phrases:{ start:"...", victory:"...", hit:"...кх...", heal:"...", death:"......", skill:"...умри." } },
-        { id:3, name:"Ярик", role:"Хилер/Баффер", hp:400, maxHp:400, mp:140, maxMp:140, atk:30, def:40, 
-          skills: [
-              { name:"Логичное лечение", heal:120, mpCost:18, desc:"120 HP союзнику" },
-              { name:"Рациональный бафф", mpCost:18, effect:"party_buff", desc:"ATK/DEF всех +20%" },
-              { name:"Умный щит", mpCost:15, effect:"shield", desc:"Снижение урона на 50% союзнику" }
-          ], skillIndex:0, type:"heal", exp:0, level:1,
-          phrases:{ start:"По факту, шанс на победу 78%. Действуем.", victory:"Логично. Мы справились.",
-                    hit:"Предсказуемо.", heal:"Рационально восстанавливаю.", death:"Просчёт...", skill:"Оптимальное решение." } }
+        { id:0, name:"Глеб", role:"Танк", hp:900, maxHp:900, mp:120, maxMp:120, atk:80, def:110, 
+          skill:"Умный удар", skillDmg:100, skillEffect:"defense_down", mpCost:8, type:"dmg", exp:0, level:1,
+          phrases:{ start:"Вероятность победы высока!", victory:"Тактика принесла результат!", heal:"Благодарю!", death:"Ошибка..." } },
+        { id:1, name:"Игнат", role:"Дамагер", hp:750, maxHp:750, mp:30, maxMp:30, atk:140, def:60, 
+          skill:"ГАНТЕЛЯ", skillDmg:200, hpCost:10, type:"dmg", exp:0, level:1,
+          phrases:{ start:"ГА! ШТАНГУ ПОДНЯЛ!", victory:"ГА! ПОБЕДА!", heal:"ФУХ...", death:"ГАНТЕЛЯ..." } },
+        { id:2, name:"Одирлбекк", role:"Ассасин", hp:550, maxHp:550, mp:50, maxMp:50, atk:160, def:40, 
+          skill:"Теневой удар", skillDmg:220, hpCost:12, type:"dmg", exp:0, level:1,
+          phrases:{ start:"...", victory:"...", heal:"...", death:"..." } },
+        { id:3, name:"Ярик", role:"Хилер", hp:480, maxHp:480, mp:150, maxMp:150, atk:45, def:55, 
+          skill:"Лечение", heal:150, mpCost:15, type:"heal", exp:0, level:1,
+          phrases:{ start:"По факту, шанс высок!", victory:"Логично!", heal:"Рационально!", death:"Просчёт..." } }
     ];
     
-    // Баффы и дебаффы
-    let activeBuffs = { partyAtkDef: 0, selfDefUp: {}, selfAtkUp: {}, nextCrit: {}, dodgeNext: {}, shield: {} };
-    
-    function applyBuffs() {
-        for(let h of heroes) {
-            let bonusAtk = 1, bonusDef = 1;
-            if(activeBuffs.partyAtkDef > 0) { bonusAtk = 1.2; bonusDef = 1.2; }
-            if(activeBuffs.selfAtkUp[h.id] > 0) bonusAtk *= 1.3;
-            if(activeBuffs.selfDefUp[h.id] > 0) bonusDef *= 1.5;
-            h.currentAtk = Math.floor(h.atk * bonusAtk);
-            h.currentDef = Math.floor(h.def * bonusDef);
-        }
-    }
-    
-    // ==================== ВРАГИ (УСИЛЕННЫЕ) ====================
+    // ==================== ВРАГИ (СЛАБЕЕ) ====================
     const enemyDB = {
-        freshman: { name:"Двоечник", hp:550, atk:65, def:35, exp:70, dialog:"Чё надо? Списывать мешаете!" },
-        bully: { name:"Задира", hp:700, atk:85, def:40, exp:100, dialog:"Слабаки! Идите отсюда!" },
-        teacher: { name:"Злой препод", hp:900, atk:105, def:50, exp:160, dialog:"Двойка! Вызвать родителей!" },
-        starosta: { name:"Староста", hp:800, atk:95, def:45, exp:140, dialog:"Всё директору расскажу!" },
-        cook: { name:"Повариха", hp:850, atk:100, def:48, exp:150, dialog:"Отравленный компот получите!", poison:true },
-        boss: { name:"ПРОРЕКТОР ТЕНЕЙ", hp:2000, atk:130, def:70, exp:800, dialog:"Изгнание из колледжа!" }
+        freshman: { name:"Двоечник", hp:320, atk:48, def:30, exp:60, dialog:"Чё надо?" },
+        bully: { name:"Задира", hp:450, atk:62, def:35, exp:90, dialog:"Слабаки!" },
+        teacher: { name:"Злой препод", hp:520, atk:72, def:40, exp:130, dialog:"Двойка!" },
+        starosta: { name:"Староста", hp:480, atk:65, def:38, exp:110, dialog:"Всё расскажу!" },
+        cook: { name:"Повариха", hp:500, atk:68, def:38, exp:120, dialog:"Компот получите!", poison:true },
+        boss: { name:"ПРОРЕКТОР ТЕНЕЙ", hp:1200, atk:90, def:55, exp:600, dialog:"Изгнание!" }
     };
     
     let battleEnemies = [];
     let inBattleTurn = "player";
     let selectedHero = null;
-    let selectedSkill = null;
-    let enemyDebuffs = {}; // { enemyIdx: { defenseDown: turns, poison: turns } }
+    let selectedAction = null;
+    let enemyDebuffs = {};
     
     let currentDifficulty = "medium";
     
     function applyDifficulty() {
         let modHeroHp = 1, modHeroAtk = 1, modEnemyHp = 1, modEnemyAtk = 1;
-        if(currentDifficulty === "easy") { modHeroHp = 1.2; modHeroAtk = 1.1; modEnemyHp = 0.8; modEnemyAtk = 0.8; }
-        if(currentDifficulty === "hard") { modHeroHp = 0.9; modHeroAtk = 0.95; modEnemyHp = 1.3; modEnemyAtk = 1.2; }
+        if(currentDifficulty === "easy") { modHeroHp = 1.2; modHeroAtk = 1.15; modEnemyHp = 0.8; modEnemyAtk = 0.85; }
+        if(currentDifficulty === "hard") { modHeroHp = 0.9; modHeroAtk = 0.95; modEnemyHp = 1.2; modEnemyAtk = 1.15; }
         for(let h of heroes) {
-            let baseHp = (h.id===0?800: h.id===1?650: h.id===2?450:400);
-            let baseAtk = (h.id===0?55: h.id===1?120: h.id===2?140:30);
+            let baseHp = (h.id===0?900: h.id===1?750: h.id===2?550:480);
+            let baseAtk = (h.id===0?80: h.id===1?140: h.id===2?160:45);
             h.maxHp = Math.floor(baseHp * modHeroHp);
             h.hp = h.maxHp;
             h.atk = Math.floor(baseAtk * modHeroAtk);
         }
         window.enemyMod = { hp: modEnemyHp, atk: modEnemyAtk };
-        document.getElementById("diffIndicator").innerText = currentDifficulty === "easy" ? "🍃 ЛЁГКАЯ" : (currentDifficulty === "medium" ? "⚖️ СРЕДНЯЯ" : "🔥 ТЯЖЁЛАЯ");
+        let diffText = currentDifficulty === "easy" ? "🍃 ЛЁГКАЯ" : (currentDifficulty === "medium" ? "⚖️ СРЕДНЯЯ" : "🔥 ТЯЖЁЛАЯ");
+        document.getElementById("diffIndicator").innerText = diffText;
     }
     
     function scaleEnemy(e) {
@@ -272,11 +243,11 @@
     function healAtZone(zone) {
         if(zone.used) { setMsg("💊 Здесь уже отдыхали!"); return false; }
         for(let h of heroes) {
-            h.hp = Math.min(h.maxHp, h.hp + 120);
+            h.hp = Math.min(h.maxHp, h.hp + 150);
             h.mp = Math.min(h.maxMp, h.mp + 50);
         }
         zone.used = true;
-        setMsg("💊 Отдых! +120 HP, +50 MP");
+        setMsg("💊 Отдых! +150 HP, +50 MP");
         return true;
     }
     
@@ -286,10 +257,9 @@
             if(h.exp >= 100 && h.level < 6) {
                 h.level++;
                 h.exp = 0;
-                h.maxHp = Math.floor(h.maxHp * 1.08);
+                h.maxHp = Math.floor(h.maxHp * 1.1);
                 h.hp = h.maxHp;
-                h.atk = Math.floor(h.atk * 1.05);
-                h.def = Math.floor(h.def * 1.05);
+                h.atk = Math.floor(h.atk * 1.08);
                 setMsg("✨ " + h.name + " → " + h.level + " уровень! ✨");
             }
         }
@@ -313,130 +283,49 @@
         inBattleTurn = "player";
         selectedHero = null;
         enemyDebuffs = {};
-        activeBuffs = { partyAtkDef: 0, selfDefUp: {}, selfAtkUp: {}, nextCrit: {}, dodgeNext: {}, shield: {} };
-        applyBuffs();
-        setMsg(heroes[0].phrases.start);
+        setMsg("⚔️ БОЙ! " + heroes[0].phrases.start);
         renderGame();
-    }
-    
-    function useHeroSkill(hero, skillIdx, targetEnemyIdx, targetAllyIdx) {
-        let skill = hero.skills[skillIdx];
-        
-        // Проверка ресурсов
-        if(skill.hpCost && hero.hp <= skill.hpCost) { setMsg("❗ Мало HP!"); return false; }
-        if(skill.mpCost && hero.mp < skill.mpCost) { setMsg("❗ Мало MP!"); return false; }
-        
-        // Обработка эффектов
-        if(skill.heal) {
-            let target = targetAllyIdx !== undefined ? heroes[targetAllyIdx] : heroes.find(h => h.hp < h.maxHp) || heroes[0];
-            target.hp = Math.min(target.maxHp, target.hp + skill.heal);
-            hero.mp -= skill.mpCost;
-            setMsg(hero.phrases.skill + " +" + skill.heal + " HP для " + target.name);
-            return true;
-        }
-        
-        if(skill.effect === "party_buff") {
-            activeBuffs.partyAtkDef = 3;
-            hero.mp -= skill.mpCost;
-            setMsg(hero.phrases.skill + " ATK/DEF группы +20%!");
-            applyBuffs();
-            return true;
-        }
-        
-        if(skill.effect === "shield") {
-            let target = targetAllyIdx !== undefined ? heroes[targetAllyIdx] : heroes[0];
-            activeBuffs.shield[target.id] = 2;
-            hero.mp -= skill.mpCost;
-            setMsg(hero.phrases.skill + " " + target.name + " получает щит -50% урона!");
-            return true;
-        }
-        
-        if(skill.effect === "self_def_up") {
-            activeBuffs.selfDefUp[hero.id] = 3;
-            hero.mp -= skill.mpCost;
-            setMsg(hero.phrases.skill + " Защита +50%!");
-            applyBuffs();
-            return true;
-        }
-        
-        if(skill.effect === "self_atk_up") {
-            activeBuffs.selfAtkUp[hero.id] = 3;
-            if(skill.hpCost) hero.hp -= skill.hpCost;
-            setMsg(hero.phrases.skill + " Атака +30%!");
-            applyBuffs();
-            return true;
-        }
-        
-        if(skill.effect === "next_crit") {
-            activeBuffs.nextCrit[hero.id] = true;
-            hero.mp -= skill.mpCost;
-            setMsg(hero.phrases.skill + " Следующий удар критический!");
-            return true;
-        }
-        
-        if(skill.effect === "dodge_next") {
-            activeBuffs.dodgeNext[hero.id] = true;
-            if(skill.hpCost) hero.hp -= skill.hpCost;
-            setMsg(hero.phrases.skill + " Уклонение от следующей атаки!");
-            return true;
-        }
-        
-        // Урон
-        let target = battleEnemies[targetEnemyIdx];
-        if(!target) return false;
-        
-        let def = target.def;
-        if(enemyDebuffs[targetEnemyIdx]?.defenseDown) def = Math.floor(def * 0.8);
-        
-        let dmg = hero.currentAtk * 2 + skill.dmg + Math.floor(Math.random() * 40);
-        if(activeBuffs.nextCrit[hero.id]) { dmg = Math.floor(dmg * 1.5); activeBuffs.nextCrit[hero.id] = false; setMsg("💥 КРИТИЧЕСКИЙ УДАР!"); }
-        let finalDmg = Math.max(25, dmg - def);
-        
-        if(skill.instakill && Math.random() < skill.instakill) {
-            target.hp = 0;
-            setMsg("💀 " + hero.name + " МГНОВЕННО УБИЛ " + target.name + "!");
-        } else {
-            target.hp -= finalDmg;
-            setMsg(hero.phrases.skill + " → " + target.name + " -" + finalDmg + " урона!");
-        }
-        
-        if(skill.aoe) {
-            for(let i=0; i<battleEnemies.length; i++) {
-                if(i !== targetEnemyIdx && battleEnemies[i].hp > 0) {
-                    let aoeDmg = Math.floor(finalDmg * 0.6);
-                    battleEnemies[i].hp -= aoeDmg;
-                    setMsg("💥 Осколочный урон по " + battleEnemies[i].name + " -" + aoeDmg);
-                }
-            }
-        }
-        
-        if(skill.effect === "defense_down") {
-            if(!enemyDebuffs[targetEnemyIdx]) enemyDebuffs[targetEnemyIdx] = {};
-            enemyDebuffs[targetEnemyIdx].defenseDown = true;
-            setMsg("⬇️ Защита врага снижена!");
-        }
-        
-        if(skill.hpCost) hero.hp -= skill.hpCost;
-        if(skill.mpCost) hero.mp -= skill.mpCost;
-        
-        return true;
     }
     
     function heroAttack(hero, enemyIdx) {
         let enemy = battleEnemies[enemyIdx];
         let def = enemy.def;
-        if(enemyDebuffs[enemyIdx]?.defenseDown) def = Math.floor(def * 0.8);
-        let dmg = hero.currentAtk + Math.floor(Math.random() * 25) - def;
-        if(activeBuffs.nextCrit[hero.id]) { dmg = Math.floor(dmg * 1.5); activeBuffs.nextCrit[hero.id] = false; setMsg("💥 КРИТИЧЕСКИЙ УДАР!"); }
-        dmg = Math.max(8, dmg);
+        if(enemyDebuffs[enemyIdx]?.defenseDown) def = Math.floor(def * 0.7);
+        let dmg = Math.max(15, hero.atk + Math.floor(Math.random() * 25) - def);
         enemy.hp -= dmg;
-        setMsg(hero.name + " атакует! → -" + dmg + " HP!");
+        setMsg(hero.name + " атакует → -" + dmg + " HP!");
         return true;
+    }
+    
+    function heroSkill(hero, enemyIdx) {
+        if(hero.type === "heal") {
+            if(hero.mp < 15) { setMsg("❗ Нет MP!"); return false; }
+            let target = heroes.find(h => h.hp < h.maxHp) || heroes[0];
+            target.hp = Math.min(target.maxHp, target.hp + 150);
+            hero.mp -= 15;
+            setMsg(hero.phrases.heal + " +150 HP для " + target.name);
+            return true;
+        } else {
+            let costMp = hero.mpCost || 0;
+            let hpCost = hero.hpCost || 0;
+            if(hpCost > 0 && hero.hp <= hpCost) { setMsg("❗ Мало HP!"); return false; }
+            if(costMp > 0 && hero.mp < costMp) { setMsg("❗ Мало MP!"); return false; }
+            let def = battleEnemies[enemyIdx].def;
+            if(enemyDebuffs[enemyIdx]?.defenseDown) def = Math.floor(def * 0.7);
+            let dmg = hero.atk * 2 + hero.skillDmg + Math.floor(Math.random() * 40);
+            let finalDmg = Math.max(30, dmg - def);
+            battleEnemies[enemyIdx].hp -= finalDmg;
+            if(hpCost > 0) hero.hp -= hpCost;
+            else hero.mp -= costMp;
+            if(hero.id === 0) { enemyDebuffs[enemyIdx] = { defenseDown: true }; setMsg("⬇️ Защита врага снижена!"); }
+            setMsg(hero.phrases.start + " → -" + finalDmg + " урона!");
+            return true;
+        }
     }
     
     function attemptEscape() {
         if(gameState !== "battle" || inBattleTurn !== "player") return false;
-        let chance = (currentDifficulty === "easy") ? 0.7 : (currentDifficulty === "medium") ? 0.5 : 0.3;
+        let chance = (currentDifficulty === "easy") ? 0.8 : (currentDifficulty === "medium") ? 0.6 : 0.4;
         if(Math.random() < chance) {
             setMsg("🏃‍♂️ Удалось сбежать!");
             gameState = "gameplay";
@@ -455,44 +344,32 @@
         let alive = heroes.filter(h => h.hp > 0);
         if(alive.length === 0) { gameState = "gameover"; renderGame(); return; }
         
-        // Обновление баффов
-        if(activeBuffs.partyAtkDef > 0) activeBuffs.partyAtkDef--;
-        for(let h of heroes) {
-            if(activeBuffs.selfDefUp[h.id] > 0) activeBuffs.selfDefUp[h.id]--;
-            if(activeBuffs.selfAtkUp[h.id] > 0) activeBuffs.selfAtkUp[h.id]--;
-            if(activeBuffs.dodgeNext[h.id] !== undefined) activeBuffs.dodgeNext[h.id] = false;
-            if(activeBuffs.shield[h.id] > 0) activeBuffs.shield[h.id]--;
-        }
-        applyBuffs();
-        
         for(let ei=0; ei<battleEnemies.length; ei++) {
             let e = battleEnemies[ei];
             if(e.hp <= 0) continue;
             let target = alive[Math.floor(Math.random() * alive.length)];
-            let dmg = e.atk + Math.floor(Math.random() * 20) - Math.floor(target.currentDef / 2);
-            if(activeBuffs.shield[target.id] > 0) dmg = Math.floor(dmg * 0.5);
-            if(activeBuffs.dodgeNext[target.id]) { dmg = 0; setMsg(target.name + " уклонился!"); activeBuffs.dodgeNext[target.id] = false; }
-            dmg = Math.max(5, dmg);
+            let dmg = Math.max(8, e.atk + Math.floor(Math.random() * 15) - Math.floor(target.def / 2));
             target.hp -= dmg;
             setMsg(e.name + ": " + e.dialog + " → " + target.name + " -" + dmg + " HP");
-            if(target.hp <= 0) setMsg(target.name + " без сознания! " + (target.phrases.death || ""));
-            if(e.poison && Math.random()<0.3) { target.hp -= 20; setMsg("☠️ Отравление! -20 HP"); }
+            if(target.hp <= 0) setMsg(target.name + " без сознания!");
+            if(e.poison && Math.random()<0.25) { target.hp -= 15; setMsg("☠️ Отравление! -15 HP"); }
         }
         
         if(heroes.every(h => h.hp <= 0)) { gameState = "gameover"; renderGame(); return; }
         if(battleEnemies.every(e => e.hp <= 0)) {
             let totalExp = battleEnemies.reduce((s,e) => s + e.exp, 0);
             addExp(totalExp);
-            let winner = heroes.find(h => h.hp > 0);
-            setMsg("ПОБЕДА! " + (winner ? winner.phrases.victory : "") + " +" + totalExp + " опыта");
             for(let em of currentMap.enemies) {
                 if(em.alive && em.name === battleEnemies[0]?.name) { em.alive = false; break; }
             }
-            // Победа над боссом → сразу финал!
+            
+            // ПОБЕДА НАД БОССОМ → СРАЗУ ФИНАЛ!
             if(currentLevel === 4 && battleEnemies[0]?.name === "ПРОРЕКТОР ТЕНЕЙ") {
                 startCredits();
                 return;
             }
+            
+            setMsg("ПОБЕДА! +" + totalExp + " опыта");
             gameState = "gameplay";
             renderGame();
             return;
@@ -501,43 +378,46 @@
         renderGame();
     }
     
-    function playerBattle(heroIdx, skillIdx, targetEnemyIdx, targetAllyIdx) {
+    function playerBattle(heroIdx, action, enemyIdx) {
         if(gameState !== "battle" || inBattleTurn !== "player") return false;
         let hero = heroes[heroIdx];
         if(hero.hp <= 0) { setMsg(hero.name + " без сознания!"); return false; }
+        let enemy = battleEnemies[enemyIdx];
+        if(!enemy || enemy.hp <= 0) return false;
         
         let ok = false;
-        if(skillIdx === -1) {
-            ok = heroAttack(hero, targetEnemyIdx);
-        } else {
-            ok = useHeroSkill(hero, skillIdx, targetEnemyIdx, targetAllyIdx);
-        }
+        if(action === "attack") ok = heroAttack(hero, enemyIdx);
+        else ok = heroSkill(hero, enemyIdx);
         if(!ok) return false;
         
         if(battleEnemies.every(e => e.hp <= 0)) {
             let totalExp = battleEnemies.reduce((s,e) => s + e.exp, 0);
             addExp(totalExp);
+            for(let em of currentMap.enemies) {
+                if(em.alive && em.name === battleEnemies[0]?.name) { em.alive = false; break; }
+            }
+            if(currentLevel === 4 && battleEnemies[0]?.name === "ПРОРЕКТОР ТЕНЕЙ") {
+                startCredits();
+                return true;
+            }
             setMsg("ПОБЕДА! +" + totalExp + " опыта");
-            if(currentLevel === 4) { startCredits(); return true; }
             gameState = "gameplay";
             renderGame();
             return true;
         }
         inBattleTurn = "enemy";
         renderGame();
-        setTimeout(() => enemyBattleTurn(), 500);
+        setTimeout(() => enemyBattleTurn(), 450);
         return true;
     }
     
-    // ==================== ИСТОРИЯ И КАТСЦЕНЫ ====================
+    // ==================== КАТСЦЕНЫ ====================
     let storyLines = [
-        { speaker: "Рассказчик", text: "Давным-давно, в старом колледже..." },
-        { speaker: "Рассказчик", text: "Жили-были четверо друзей. Глеб — стратег и тактик." },
-        { speaker: "Рассказчик", text: "Игнат — силач, которому гантеля дороже жизни." },
-        { speaker: "Рассказчик", text: "Одирлбекк — молчаливый воин, чьё прошлое окутано тайной." },
-        { speaker: "Рассказчик", text: "И Ярик — умный ботан, который находит рациональные решения." },
-        { speaker: "Рассказчик", text: "Однажды в колледж проникла ТЕНЬ ПРОРЕКТОРА." },
-        { speaker: "Рассказчик", text: "Теперь только наши герои могут очистить колледж от скверны!" }
+        { speaker: "Рассказчик", text: "Колледж... обычный день... но что-то пошло не так." },
+        { speaker: "Глеб", text: "По моим расчётам, Проректор теней захватил деканат." },
+        { speaker: "Игнат", text: "ГА! ШТАНГУ ПОДНЯЛ! РАЗБЕРУСЬ!" },
+        { speaker: "Одирлбекк", text: "..." },
+        { speaker: "Ярик", text: "По факту, шанс на успех высок. Действуем!" }
     ];
     
     function startStorytelling() {
@@ -563,55 +443,25 @@
         cutsceneStep = 0;
         if(type === "level1_complete") {
             cutsceneLines = [
-                { speaker: "Глеб", text: "Анализ завершён. В классе чисто. Идём в коридор." },
-                { speaker: "Игнат", text: "ГА! ЭТИ ДВОЕЧНИКИ ДАЖЕ НЕ ПОТНЫЕ!" },
-                { speaker: "Одирлбекк", text: "..." },
-                { speaker: "Ярик", text: "По факту, основная опасность впереди. В коридоре нас ждут старосты." },
-                { speaker: "Рассказчик", text: "Группа вышла в коридор. Там их ждали новые испытания..." }
+                { speaker: "Глеб", text: "Класс пройден. Идём в коридор." },
+                { speaker: "Игнат", text: "ГА! ЭТИ СЛАБАКИ ДАЖЕ НЕ ПОТНЫЕ!" }
             ];
         } else if(type === "level2_complete") {
             cutsceneLines = [
                 { speaker: "Глеб", text: "Коридор зачищен. Следующая остановка — столовая." },
-                { speaker: "Игнат", text: "ГА! ПОЕСТЬ БЫ НЕ МЕШАЛО!" },
-                { speaker: "Одирлбекк", text: "...еда... опасно..." },
-                { speaker: "Ярик", text: "Повариха может подать отравленный компот. Будьте осторожны." },
-                { speaker: "Рассказчик", text: "Герои направились в столовую..." }
+                { speaker: "Ярик", text: "Повариха может подать отравленный компот. Осторожно." }
             ];
         } else if(type === "level3_complete") {
             cutsceneLines = [
                 { speaker: "Глеб", text: "Столовая очищена. Теперь последний рывок — кабинет директора." },
-                { speaker: "Игнат", text: "ГА! ПРОРЕКТОР! ДАВНО ХОТЕЛ ПОБОРОТЬСЯ!" },
-                { speaker: "Одирлбекк", text: "...финал." },
-                { speaker: "Ярик", text: "Финальная битва. Всё, что мы делали, вело к этому моменту." },
-                { speaker: "Рассказчик", text: "Наши герои подошли к двери кабинета директора. За ней ждал ПРОРЕКТОР ТЕНЕЙ..." }
+                { speaker: "Игнат", text: "ГА! ПРОРЕКТОР! ДАВНО ХОТЕЛ ПОБОРОТЬСЯ!" }
             ];
-        } else if(type === "escape_attempt") {
-            cutsceneLines = [
-                { speaker: "Глеб", text: "Стоп. По моим расчётам, мы не можем пройти. Враги остались." },
-                { speaker: "Игнат", text: "ГА! СВАЛИТЬ БЕЗ БОЯ?! ЩАС! ГАНТЕЛЯ ЛЕТИТ!" },
-                { speaker: "Одирлбекк", text: "...убью." },
-                { speaker: "Ярик", text: "Логичнее сначала разобраться с врагами." }
-            ];
-            escapeChoiceActive = true;
         }
         gameState = "cutscene";
         renderGame();
     }
     
     function advanceCutscene() {
-        if(escapeChoiceActive && cutsceneStep === cutsceneLines.length - 1) {
-            let choice = confirm("Что делаем?\nОК — Вернуться и добить врагов\nОтмена — Игнат бросается в бой");
-            if(choice) { setMsg("Возвращаемся добивать врагов!"); gameState = "gameplay"; }
-            else {
-                setMsg("Игнат: ГА! Я ОДИН ВСЕХ РАЗНЕСУ!");
-                let aliveEnemies = currentMap.enemies.filter(e => e.alive);
-                if(aliveEnemies.length > 0) startBattle(aliveEnemies[0].type);
-                else gameState = "gameplay";
-            }
-            escapeChoiceActive = false;
-            renderGame();
-            return;
-        }
         if(cutsceneStep < cutsceneLines.length - 1) {
             cutsceneStep++;
             renderGame();
@@ -619,32 +469,26 @@
             if(cutsceneType === "level1_complete") { currentLevel = 2; loadLevel(2); gameState = "gameplay"; }
             else if(cutsceneType === "level2_complete") { currentLevel = 3; loadLevel(3); gameState = "gameplay"; }
             else if(cutsceneType === "level3_complete") { currentLevel = 4; loadLevel(4); gameState = "gameplay"; }
-            else if(cutsceneType === "escape_attempt") gameState = "gameplay";
             renderGame();
         }
     }
     
-    // ==================== ТИТРЫ И ФОТО ====================
+    // ==================== ТИТРЫ ====================
     let creditsStep = 0;
     let creditsLines = [
         "═══════════════════════════════════════",
-        "        COLLEGE BRAWL 3.0",
+        "        COLLEGE BRAWL",
         "═══════════════════════════════════════",
         "",
         "★ ГЛАВНЫЕ ГЕРОИ ★",
         "",
-        "ГЛЕБ — Танк",
-        "«Расчёт подтвердился. Колледж чист.»",
+        "ГЛЕБ — Танк: «Колледж спасён!»",
+        "ИГНАТ — Дамагер: «ГА! ШТАНГА ПОБЕДИЛА!»",
+        "ОДИРЛБЕКК — Ассасин: «...конец.»",
+        "ЯРИК — Хилер: «Логично! Задача выполнена.»",
         "",
-        "ИГНАТ — Дамагер",
-        "«ГА! ШТАНГА ПОБЕДИЛА! ИДУ КАЧАТЬСЯ!»",
-        "",
-        "ОДИРЛБЕКК — Стекло-пушка",
-        "«...конец.»",
-        "",
-        "ЯРИК — Хилер/Баффер",
-        "«Логично. Мы справились. Задача выполнена.»",
-        "",
+        "═══════════════════════════════════════",
+        "   СПАСИБО ЗА ИГРУ!",
         "═══════════════════════════════════════"
     ];
     
@@ -680,17 +524,19 @@
             if(zone) healAtZone(zone);
         }
         if(currentMap.tiles[ny][nx] === 3) {
-            if(getAliveEnemiesCount() > 0) { startCutscene("escape_attempt"); return; }
-            else {
+            if(canGoToNextLevel()) {
                 if(currentLevel === 1) startCutscene("level1_complete");
                 else if(currentLevel === 2) startCutscene("level2_complete");
                 else if(currentLevel === 3) startCutscene("level3_complete");
-                return;
+            } else {
+                let need = (currentMap.requiredToKill || 1) - getRequiredKillsCount();
+                setMsg(`⚠️ Нужно убить ещё ${need} обязательных врагов! (можно не всех)`);
             }
+            return;
         }
         player.x = nx; player.y = ny;
         let enemy = currentMap.enemies.find(e => e.alive && e.x === player.x && e.y === player.y);
-        if(enemy) { enemy.alive = false; startBattle(enemy.type); }
+        if(enemy) { startBattle(enemy.type); }
         renderGame();
     }
     
@@ -714,7 +560,7 @@
     
     function drawMenu() {
         ctx.fillStyle = "#070c12"; ctx.fillRect(0,0,1280,720);
-        ctx.fillStyle = "#e9d49c"; ctx.font = "bold 64 monospace"; ctx.fillText("COLLEGE BRAWL 3.0", 320, 140);
+        ctx.fillStyle = "#e9d49c"; ctx.font = "bold 64 monospace"; ctx.fillText("COLLEGE BRAWL", 380, 140);
         ctx.font = "32px monospace"; ctx.fillStyle = "#ffbc6e";
         ctx.fillText("▶ НОВАЯ ИГРА", 520, 270);
         ctx.fillText("⚙ СЛОЖНОСТЬ: " + (currentDifficulty === "easy" ? "ЛЁГКАЯ" : (currentDifficulty === "medium" ? "СРЕДНЯЯ" : "ТЯЖЁЛАЯ")), 460, 370);
@@ -725,7 +571,7 @@
     function drawStorytelling() {
         ctx.fillStyle = "#0a0a0f"; ctx.fillRect(0,0,1280,720);
         let line = storyLines[storyStep];
-        ctx.fillStyle = "#f7e2b0"; ctx.font = "bold 48 monospace"; ctx.fillText(line.speaker, 80, 180);
+        ctx.fillStyle = "#f7e2b0"; ctx.font = "bold 46 monospace"; ctx.fillText(line.speaker, 80, 180);
         drawWrappedText(line.text, 80, 270, 1100, 50, 34);
         ctx.fillStyle = "#c9aa6f"; ctx.font = "24px monospace"; ctx.fillText("👉 Кликни для продолжения 👈", 480, 660);
     }
@@ -733,8 +579,8 @@
     function drawCutscene() {
         ctx.fillStyle = "#0a0a0f"; ctx.fillRect(0,0,1280,720);
         let line = cutsceneLines[cutsceneStep];
-        ctx.fillStyle = "#f7e2b0"; ctx.font = "bold 44 monospace"; ctx.fillText(line.speaker, 80, 160);
-        drawWrappedText(line.text, 80, 250, 1100, 48, 32);
+        ctx.fillStyle = "#f7e2b0"; ctx.font = "bold 44 monospace"; ctx.fillText(line.speaker, 80, 200);
+        drawWrappedText(line.text, 80, 300, 1100, 48, 32);
         ctx.fillStyle = "#c9aa6f"; ctx.font = "24px monospace"; ctx.fillText("👉 Кликни для продолжения 👈", 480, 660);
     }
     
@@ -759,8 +605,10 @@
         }
         for(let e of currentMap.enemies) {
             if(e.alive) {
-                ctx.fillStyle = "#c2422a"; ctx.beginPath(); ctx.arc(e.x*tw+tw/2, e.y*th+th/2, th/3, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = "white"; ctx.font="bold "+(th/2.5)+"px monospace"; ctx.fillText("👹", e.x*tw+tw/3, e.y*th+th-10);
+                ctx.fillStyle = e.required ? "#c2422a" : "#aa8844";
+                ctx.beginPath(); ctx.arc(e.x*tw+tw/2, e.y*th+th/2, th/3, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "white"; ctx.font="bold "+(th/2.5)+"px monospace"; 
+                ctx.fillText(e.required ? "⚠️" : "👹", e.x*tw+tw/3, e.y*th+th-10);
             }
         }
         ctx.fillStyle = "#4a86c9"; ctx.fillRect(player.x*tw+5, player.y*th+5, tw-10, th-10);
@@ -771,11 +619,14 @@
         let levelNames = ["", "КЛАСС", "КОРИДОР", "СТОЛОВАЯ", "КАБИНЕТ"];
         ctx.fillText("📍 " + levelNames[currentLevel], 15, 40);
         let aliveCnt = currentMap.enemies.filter(e => e.alive).length;
-        ctx.fillText("👥 Врагов: " + aliveCnt, 15, 75);
+        ctx.fillText("👥 Врагов всего: " + aliveCnt, 15, 75);
+        let requiredKilled = getRequiredKillsCount();
+        let requiredTotal = getTotalRequiredCount();
+        ctx.fillText("⚠️ Обязательных убито: " + requiredKilled + "/" + requiredTotal, 15, 110);
         let availableHeals = currentMap.healZones.filter(z => !z.used).length;
-        ctx.fillText("💊 Лечений осталось: " + availableHeals, 15, 110);
-        if(aliveCnt > 0) ctx.fillText("⚠️ ПОБЕДИ ВСЕХ ВРАГОВ!", 15, 150);
-        else ctx.fillText("✅ МОЖНО УХОДИТЬ ЧЕРЕЗ ДВЕРЬ!", 15, 150);
+        ctx.fillText("💊 Лечений осталось: " + availableHeals, 15, 145);
+        if(canGoToNextLevel()) ctx.fillText("✅ ДВЕРЬ ОТКРЫТА! ИДИ К ВЫХОДУ!", 15, 180);
+        else ctx.fillText("❌ УБЕЙ ЕЩЁ ОБЯЗАТЕЛЬНЫХ ВРАГОВ!", 15, 180);
     }
     
     function drawBattle() {
@@ -786,34 +637,31 @@
         
         let yh = 120;
         for(let h of heroes) {
-            ctx.fillStyle = "#443829"; ctx.fillRect(30, yh, 480, 110);
-            ctx.fillStyle = "#fcd894"; ctx.font = "bold 20 monospace"; 
-            ctx.fillText(h.name + " Lv." + h.level + " | " + h.role, 55, yh+30);
-            ctx.fillStyle = "#c24222"; ctx.fillRect(55, yh+55, 280*(h.hp/h.maxHp), 14);
-            ctx.fillStyle = "#3f82b0"; ctx.fillRect(55, yh+75, 280*(h.mp/h.maxMp), 10);
-            ctx.fillStyle = "white"; ctx.font = "16px monospace"; 
-            ctx.fillText("❤️ " + Math.floor(h.hp) + "/" + h.maxHp + "  ✨" + h.mp, 60, yh+105);
-            ctx.fillStyle = "#ffaa66"; ctx.font = "14px monospace";
-            let skillNames = h.skills.map(s => s.name.substring(0,10)).join(" / ");
-            ctx.fillText("📜 " + skillNames, 55, yh+125);
-            yh += 130;
+            ctx.fillStyle = "#443829"; ctx.fillRect(30, yh, 450, 105);
+            ctx.fillStyle = "#fcd894"; ctx.font = "bold 22 monospace"; 
+            ctx.fillText(h.name + " Lv." + h.level + " | " + h.role, 55, yh+35);
+            ctx.fillStyle = "#c24222"; ctx.fillRect(55, yh+55, 280*(h.hp/h.maxHp), 16);
+            ctx.fillStyle = "#3f82b0"; ctx.fillRect(55, yh+77, 280*(h.mp/h.maxMp), 12);
+            ctx.fillStyle = "white"; ctx.font = "18px monospace"; 
+            ctx.fillText("❤️ " + Math.floor(h.hp) + "/" + h.maxHp + "  ✨" + h.mp, 60, yh+98);
+            yh += 115;
         }
         
         let ye = 140;
         for(let ei=0; ei<battleEnemies.length; ei++) {
             let e = battleEnemies[ei];
-            ctx.fillStyle = "#632e1f"; ctx.fillRect(780, ye, 420, 95);
+            ctx.fillStyle = "#632e1f"; ctx.fillRect(780, ye, 420, 90);
             ctx.fillStyle = "#ffc285"; ctx.font = "bold 26 monospace"; ctx.fillText(e.name, 810, ye+35);
             ctx.fillStyle = "#d93f2b"; ctx.fillRect(810, ye+58, 300*(e.hp/e.maxHp), 16);
-            ctx.fillStyle = "#ffd59c"; ctx.font = "18px monospace"; ctx.fillText("❤️ " + Math.floor(e.hp) + "/" + e.maxHp, 820, ye+85);
-            if(enemyDebuffs[ei]?.defenseDown) { ctx.fillStyle = "#ffaa66"; ctx.fillText("⬇️ ЗАЩИТА СНИЖЕНА", 810, ye+110); }
-            ye += 115;
+            ctx.fillStyle = "#ffd59c"; ctx.font = "18px monospace"; ctx.fillText("❤️ " + Math.floor(e.hp) + "/" + e.maxHp, 820, ye+82);
+            if(enemyDebuffs[ei]?.defenseDown) { ctx.fillStyle = "#ffaa66"; ctx.fillText("⬇️ ЗАЩИТА СНИЖЕНА", 810, ye+108); }
+            ye += 105;
         }
         
         ctx.fillStyle = "#e8dbbd"; ctx.font = "20px monospace";
-        ctx.fillText("👆 Кликни по герою → выбери навык → кликни по врагу/союзнику", 380, 670);
+        ctx.fillText("👆 Кликни по герою → выбери действие (OK=атака, Отмена=навык) → кликни по врагу", 330, 670);
         ctx.fillStyle = "#ffaa66";
-        ctx.fillText("🏃‍♂️ Нажми ПРОБЕЛ чтобы СБЕЖАТЬ", 500, 705);
+        ctx.fillText("🏃‍♂️ Нажми ПРОБЕЛ чтобы СБЕЖАТЬ (60% шанс)", 490, 705);
     }
     
     function drawGameOver() {
@@ -830,7 +678,7 @@
         ctx.fillStyle = "#0a0a1a"; ctx.fillRect(0,0,1280,720);
         ctx.fillStyle = "#ffdd88"; ctx.font = "bold 32 monospace";
         for(let i=0; i<=creditsStep; i++) {
-            let yPos = 80 + i*38;
+            let yPos = 80 + i*40;
             if(yPos < 700) ctx.fillText(creditsLines[i], 300, yPos);
         }
     }
@@ -841,13 +689,13 @@
         ctx.fillText("★ ГРУППОВОЕ ФОТО ★", 420, 100);
         ctx.font = "36px monospace";
         let photos = ["[ ГЛЕБ ]", "[ ИГНАТ ]", "[ ОДИРЛБЕКК ]", "[ ЯРИК ]"];
+        let roles = ["Танк", "Дамагер", "Ассасин", "Хилер"];
         let xPos = [180, 430, 680, 930];
         for(let i=0; i<photos.length; i++) {
             ctx.fillStyle = "#4a86c9"; ctx.fillRect(xPos[i], 250, 180, 180);
-            ctx.fillStyle = "white"; ctx.font = "bold 30px monospace"; ctx.fillText(photos[i], xPos[i]+15, 380);
+            ctx.fillStyle = "white"; ctx.font = "bold 30px monospace"; ctx.fillText(photos[i], xPos[i]+15, 370);
             ctx.fillStyle = "#ffaa66"; ctx.font = "24px monospace";
-            let roles = ["Танк", "Дамагер", "Стекло-пушка", "Хилер"];
-            ctx.fillText(roles[i], xPos[i]+40, 430);
+            ctx.fillText(roles[i], xPos[i]+45, 430);
         }
         ctx.fillStyle = "#bba87a"; ctx.font = "24px monospace";
         ctx.fillText("СПАСИБО ЗА ИГРУ!", 520, 580);
@@ -890,57 +738,23 @@
         } else if(gameState === "battle") {
             let yh = 120;
             for(let i=0;i<heroes.length;i++) {
-                let yTop = yh + i*130;
-                if(mx>30 && mx<510 && my>yTop && my<yTop+110 && heroes[i].hp>0) {
-                    let hero = heroes[i];
-                    let skillNames = hero.skills.map((s, idx) => idx + ": " + s.name).join("\n");
-                    let skillChoice = prompt(hero.name + " - выбери действие:\n0: Атака\n" + 
-                        hero.skills.map((s, idx) => (idx+1) + ": " + s.name + " (" + s.desc + ")").join("\n"));
-                    if(skillChoice === null) return;
-                    if(skillChoice === "0") {
-                        selectedHero = i;
-                        selectedSkill = -1;
-                        setMsg(hero.name + ": атака. Кликни по врагу!");
-                    } else {
-                        let idx = parseInt(skillChoice) - 1;
-                        if(idx >= 0 && idx < hero.skills.length) {
-                            selectedHero = i;
-                            selectedSkill = idx;
-                            let skill = hero.skills[idx];
-                            if(skill.heal || skill.effect === "shield") {
-                                setMsg(hero.name + ": " + skill.name + ". Кликни по союзнику!");
-                            } else {
-                                setMsg(hero.name + ": " + skill.name + ". Кликни по врагу!");
-                            }
-                        } else { setMsg("Неверный выбор!"); }
-                    }
+                let yTop = yh + i*115;
+                if(mx>30 && mx<480 && my>yTop && my<yTop+105 && heroes[i].hp>0) {
+                    let useSkill = confirm(heroes[i].name + " — Атака (ОК) или Навык (Отмена)?");
+                    selectedHero = i;
+                    selectedAction = useSkill ? "skill" : "attack";
+                    setMsg(heroes[i].name + ": " + selectedAction + ". Кликни по врагу!");
                     return;
                 }
             }
             if(selectedHero !== null) {
-                let hero = heroes[selectedHero];
-                let skill = selectedSkill >= 0 ? hero.skills[selectedSkill] : null;
-                let isHealOrShield = skill && (skill.heal || skill.effect === "shield");
-                
-                if(isHealOrShield) {
-                    let yh = 120;
-                    for(let i=0;i<heroes.length;i++) {
-                        let yTop = yh + i*130;
-                        if(mx>30 && mx<510 && my>yTop && my<yTop+110 && heroes[i].hp > 0) {
-                            playerBattle(selectedHero, selectedSkill, null, i);
-                            selectedHero = null; selectedSkill = null;
-                            return;
-                        }
-                    }
-                } else {
-                    let ye = 140;
-                    for(let i=0;i<battleEnemies.length;i++) {
-                        let yTop = ye + i*115;
-                        if(mx>780 && mx<1200 && my>yTop && my<yTop+95 && battleEnemies[i].hp>0) {
-                            playerBattle(selectedHero, selectedSkill, i, null);
-                            selectedHero = null; selectedSkill = null;
-                            return;
-                        }
+                let ye = 140;
+                for(let i=0;i<battleEnemies.length;i++) {
+                    let yTop = ye + i*105;
+                    if(mx>780 && mx<1200 && my>yTop && my<yTop+90 && battleEnemies[i].hp>0) {
+                        playerBattle(selectedHero, selectedAction, i);
+                        selectedHero = null;
+                        return;
                     }
                 }
             }
